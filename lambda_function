@@ -1,0 +1,34 @@
+import http.client
+import boto3
+import os
+from base64 import b64decode
+ENCRYPTED = os.environ['test']
+# Decrypt code should run once and variables stored outside of the function
+# handler so that these are decrypted once per container
+DECRYPTED = boto3.client('kms').decrypt(CiphertextBlob=b64decode(ENCRYPTED))['Plaintext']
+def lambda_handler(event, context):
+    # TODO implement
+    pr_tittle=event['pull_request']['title']
+    sha=event['pull_request']['head']['sha']
+    full_name=event['pull_request']['head']['repo']['full_name']
+    print(pr_tittle)
+    print(sha)
+    print(full_name)
+    conn = http.client.HTTPSConnection("api.github.com")
+    jira_issue_prefix="APROXY-"
+    if pr_tittle.find(jira_issue_prefix, 0, len(pr_tittle))!=-1:
+        payload = "{\n  \"state\": \"success\",\n  \"target_url\": \"https://abc.com\",\n  \"description\": \"Pull request tittle validation passed\",\n  \"context\": \"Pull request tittle validation\"\n}"
+    else:
+        payload = "{\n  \"state\": \"failure\",\n  \"target_url\": \"https://abc.com\",\n  \"description\": \"Pull request tittle validation failed\",\n  \"context\": \"Pull request tittle validation\"\n}"
+    headers = {
+    'authorization': "Basic XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    'content-type': "application/json",
+    'cache-control': "no-cache",
+    'postman-token': "12217483-f68a-5590-d65f-2334574292bc",
+    'User-Agent': 'kirankhopade'
+    }
+    conn.request("POST", "/repos/"+full_name+"/statuses/"+sha, payload, headers)
+    res = conn.getresponse()
+    data = res.read()
+    print(data.decode("utf-8"))
+    return 'Hello from Lambda'
